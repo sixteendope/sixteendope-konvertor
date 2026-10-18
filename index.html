@@ -38,9 +38,11 @@ body{min-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset
 ::view-transition-old(root){animation:none;mix-blend-mode:normal}
 ::view-transition-new(root){animation:reveal .65s cubic-bezier(.65,0,.35,1) both;mix-blend-mode:normal}
 @keyframes reveal{from{clip-path:circle(0 at var(--x,90%) var(--y,10%))}to{clip-path:circle(150% at var(--x,90%) var(--y,10%))}}
-.l{min-width:0}
+.l{min-width:0;flex:1}
+.c .t span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c .t span:last-child{flex:none}
 .g{width:130px;flex:none}
-.d{font-size:13px;font-weight:600;opacity:.9;margin-bottom:4px;text-align:right}
+.d{font-size:13px;font-weight:600;opacity:.9;margin-bottom:4px;text-align:right;white-space:nowrap}
 .ch{display:block;width:100%;height:auto;overflow:visible}
 .ch polyline{fill:none;stroke:var(--paper);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1s .25s ease-out forwards}
 .ch circle{fill:var(--paper);opacity:0;animation:fade .3s 1s forwards}
@@ -101,7 +103,7 @@ function render(){
   [].forEach.call(box.querySelectorAll(".n"),function(el){
     var c=el.dataset.c,to=base/rates[c],from=shown[c]||0,t0=performance.now();
     el.dataset.v=to;
-    (function step(t){var p=Math.min(1,(t-t0)/450),e=1-Math.pow(1-p,3);shown[c]=from+(to-from)*e;el.textContent=fmt(shown[c]);if(p<1)requestAnimationFrame(step)})(t0);
+    (function step(t){var p=Math.min(1,(t-t0)/450),e=1-Math.pow(1-p,3);shown[c]=from+(to-from)*e;el.textContent=fmt(shown[c]);fit(el);if(p<1)requestAnimationFrame(step)})(t0);
   });
   var vals=[].map.call(box.querySelectorAll(".n"),function(el){return +el.dataset.v});
   var mx=Math.max.apply(null,vals.concat([1e-9]));
@@ -113,6 +115,7 @@ amt.addEventListener("input",render);
 
 var hist=null,ids={USD:431,RUB:456},sc={USD:1,RUB:100};
 function ymd(d){return d.toISOString().slice(0,10)}
+function fit(el){var c=el.closest(".c");if(!c)return;var av=c.clientWidth-190,n=el.textContent.length;el.style.fontSize=Math.max(16,Math.min(34,Math.floor(av/(n*.56))))+"px"}
 function chart(c){
   if(!hist)return"";
   var s=hist[cur].map(function(v,i){return v/hist[c][i]}),n=s.length;
@@ -120,7 +123,7 @@ function chart(c){
   var pts=s.map(function(v,i){return [4+i*122/(n-1),mx===mn?30:52-(v-mn)/(mx-mn)*44]});
   var p=pts.map(function(q){return q[0].toFixed(1)+","+q[1].toFixed(1)}).join(" ");
   var ch=(s[n-1]/s[n-2]-1)*100,lt=pts[n-1];
-  var txt=Math.abs(ch)<0.005?"без изменений к вчера":(ch>0?"▲ ":"▼ ")+Math.abs(ch).toLocaleString("ru-RU",{minimumFractionDigits:1,maximumFractionDigits:2})+"% к вчера";
+  var txt=Math.abs(ch)<0.005?"без изменений":(ch>0?"▲ ":"▼ ")+Math.abs(ch).toLocaleString("ru-RU",{minimumFractionDigits:1,maximumFractionDigits:2})+"% к вчера";
   return '<div class="g"><div class="d">'+txt+'</div><svg class="ch" viewBox="0 0 130 60"><polyline pathLength="1" points="'+p+'"/><circle cx="'+lt[0].toFixed(1)+'" cy="'+lt[1].toFixed(1)+'" r="3.5"/></svg></div>';
 }
 function loadHist(){
@@ -136,7 +139,7 @@ function loadHist(){
 }
 function loadRates(){
   fetch("https://api.nbrb.by/exrates/rates?periodicity=0").then(function(r){return r.json()}).then(function(d){
-    d.forEach(function(x){if(x.Cur_Abbreviation==="USD")rates.USD=x.Cur_OfficialRate/x.Cur_Scale;if(x.Cur_Abbreviation==="RUB")rates.RUB=x.Cur_OfficialRate/x.Cur_Scale});
+    d.forEach(function(x){if(x.Cur_Abbreviation==="USD"||x.Cur_Abbreviation==="RUB"){var k=x.Cur_Abbreviation;rates[k]=x.Cur_OfficialRate/x.Cur_Scale;ids[k]=x.Cur_ID;sc[k]=x.Cur_Scale}});loadHist();
     render();
   }).catch(function(){render()});
 }
@@ -164,7 +167,7 @@ try{var s=localStorage.getItem("th");if(s)root.dataset.theme=s}catch(e){}
 document.getElementById("tg").onclick=function(){var t=isDark()?"light":"dark";function set(){root.dataset.theme=t;try{localStorage.setItem("th",t)}catch(e){}}var b=document.getElementById("tg").getBoundingClientRect();root.style.setProperty("--x",(b.left+b.width/2)+"px");root.style.setProperty("--y",(b.top+b.height/2)+"px");set()};
 document.addEventListener("gesturestart",function(e){e.preventDefault()});
 document.addEventListener("dblclick",function(e){e.preventDefault()});
-render();loadRates();loadHist();
+render();loadRates();
 </script>
 </body>
 </html>
