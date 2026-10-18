@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="обменник">
+<title>обменник</title>
+<style>
+:root{--bg:#fff;--card:#f2f2f2;--tx:#000;--tx2:#8a8a8a;--seg:#ececec;--thumb:#000;--thumbtx:#fff;--ink:#000;--paper:#fff;box-sizing:border-box;
+padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#000;--card:#1c1c1c;--tx:#fff;--tx2:#98989f;--seg:#1c1c1c;--thumb:#fff;--thumbtx:#000;--ink:#fff;--paper:#000}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:34px;font-weight:700;letter-spacing:-.5px;margin:12px 4px 18px}
+.seg{position:relative;display:grid;grid-template-columns:repeat(3,1fr);background:var(--seg);border-radius:12px;padding:3px}
+.seg button{position:relative;z-index:1;border:0;background:none;color:var(--tx);font:600 15px inherit;font-family:inherit;padding:9px 0;cursor:pointer}
+.seg button.on{color:var(--thumbtx)}
+.thumb{position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px)/3);background:var(--thumb);border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.15);transition:transform .45s cubic-bezier(.34,1.56,.64,1)}
+.inp{margin-top:16px;background:var(--card);border-radius:20px;padding:18px 20px;display:flex;align-items:baseline;gap:10px}
+.inp input{flex:1;min-width:0;border:0;outline:0;background:none;color:var(--tx);font:700 44px inherit;font-family:inherit;letter-spacing:-1px}
+.inp span{font-size:22px;font-weight:600;color:var(--tx2)}
+.res{margin-top:14px;display:grid;gap:12px}
+.c{position:relative;overflow:hidden;border-radius:22px;padding:18px 20px;background:var(--ink);color:var(--paper);animation:in .6s cubic-bezier(.34,1.56,.64,1) both}
+.c:nth-child(2){animation-delay:.08s}
+@keyframes in{from{opacity:0;transform:translateY(24px) scale(.96)}}
+.c .t{display:flex;justify-content:space-between;font-size:15px;font-weight:600;opacity:.85}
+.c .n{font-size:40px;font-weight:700;letter-spacing:-1px;margin:6px 0 12px;font-variant-numeric:tabular-nums}
+.bar{height:8px;border-radius:4px;background:color-mix(in srgb,var(--paper) 25%,transparent);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--paper);border-radius:4px;transition:width .7s cubic-bezier(.34,1.3,.64,1)}
+.c .r{margin-top:8px;font-size:13px;opacity:.8}
+.note{margin:18px 6px 0;font-size:13px;color:var(--tx2);text-align:center}
+</style>
+</head>
+<body>
+<main>
+<h1>обменник</h1>
+<div class="seg" id="seg"><div class="thumb" id="thumb"></div>
+<button data-c="BYN">BYN</button><button data-c="USD">USD</button><button data-c="RUB">RUB</button></div>
+<div class="inp"><input id="amt" type="text" inputmode="decimal" placeholder="0" autocomplete="off"><span id="cur">BYN</span></div>
+<div class="res" id="res"></div>
+<p class="note" id="note">sixteendope ©</p>
+</main>
+<script>
+// курс в BYN за 1 единицу. запасной, если живой не загрузился
+var rates={BYN:1,USD:3.0,RUB:0.037};
+var grad={BYN:["#34c759","#00a86b"],USD:["#5ac8fa","#007aff"],RUB:["#ff9f0a","#ff375f"]};
+var names={BYN:"белорусский рубль",USD:"доллар сша",RUB:"российский рубль"};
+var cur="BYN",shown={};
+var seg=document.getElementById("seg"),thumb=document.getElementById("thumb"),amt=document.getElementById("amt");
+var order=["BYN","USD","RUB"];
+
+function fmt(v){return v.toLocaleString("ru-RU",{maximumFractionDigits:v<1?4:2,minimumFractionDigits:2})}
+function num(){return parseFloat(amt.value.replace(/\s/g,"").replace(",","."))||0}
+
+function render(){
+  document.getElementById("cur").textContent=cur;
+  thumb.style.transform="translateX("+order.indexOf(cur)*100+"%)";
+  [].forEach.call(seg.querySelectorAll("button"),function(b){b.classList.toggle("on",b.dataset.c===cur)});
+  var base=num()*rates[cur];
+  if(!num()){var b0=document.getElementById("res");b0.innerHTML="";b0.dataset.cur="";shown={};return}
+  var html="";
+  order.filter(function(c){return c!==cur}).forEach(function(c){
+    var v=base/rates[c];
+    html+='<div class="c"><div class="t"><span>'+names[c]+'</span><span>'+c+'</span></div><div class="n" data-c="'+c+'" data-v="'+v+'">'+fmt(shown[c]||0)+'</div><div class="bar"><i></i></div><div class="r">1 '+cur+' = '+fmt(rates[cur]/rates[c])+' '+c+'</div></div>';
+  });
+  var box=document.getElementById("res");
+  if(!box.children.length||box.dataset.cur!==cur){box.innerHTML=html;box.dataset.cur=cur}
+  else{[].forEach.call(box.children,function(el,i){el.querySelector(".r").textContent=(html.match(/class="r">([^<]*)/g)[i]||"").replace('class="r">','')})}
+  [].forEach.call(box.querySelectorAll(".n"),function(el){
+    var c=el.dataset.c,to=base/rates[c],from=shown[c]||0,t0=performance.now();
+    el.dataset.v=to;
+    (function step(t){var p=Math.min(1,(t-t0)/450),e=1-Math.pow(1-p,3);shown[c]=from+(to-from)*e;el.textContent=fmt(shown[c]);if(p<1)requestAnimationFrame(step)})(t0);
+  });
+  var vals=[].map.call(box.querySelectorAll(".n"),function(el){return +el.dataset.v});
+  var mx=Math.max.apply(null,vals.concat([1e-9]));
+  [].forEach.call(box.querySelectorAll(".bar i"),function(b,i){requestAnimationFrame(function(){b.style.width=Math.max(4,vals[i]/mx*100)+"%"})});
+}
+
+seg.addEventListener("click",function(e){var c=e.target.dataset&&e.target.dataset.c;if(c&&c!==cur){cur=c;shown={};render();if(navigator.vibrate)navigator.vibrate(8)}});
+amt.addEventListener("input",render);
+
+function loadRates(){
+  fetch("https://api.nbrb.by/exrates/rates?periodicity=0").then(function(r){return r.json()}).then(function(d){
+    d.forEach(function(x){if(x.Cur_Abbreviation==="USD")rates.USD=x.Cur_OfficialRate/x.Cur_Scale;if(x.Cur_Abbreviation==="RUB")rates.RUB=x.Cur_OfficialRate/x.Cur_Scale});
+    render();
+  }).catch(function(){render()});
+}
+render();loadRates();
+</script>
+</body>
+</html>
